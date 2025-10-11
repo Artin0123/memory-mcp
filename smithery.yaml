@@ -2,4 +2,4 @@ name: workflow-mcp
 version: 1.0.0
 description: MCP server providing task evaluation, environment safety checks, and reasoning tools for AI assistants.
 runtime: typescript
-entry: src/server.ts
+entry: src/index.ts
