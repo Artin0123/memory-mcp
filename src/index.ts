@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// @ts-ignore - Smithery SDK types may not be fully available locally
-import { McpServer } from "@smithery/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
 // Evaluation criteria (Flags ≥ 2 → Build memory-bank/):
 // - Multi step? (requires multiple implementation steps)
@@ -9,128 +9,99 @@ import { McpServer } from "@smithery/sdk/server/index.js";
 // - Can break into smaller sub-tasks? (independent components)
 // - Cannot guarantee bug-free completion? (high complexity/edge cases)
 
-const server = new McpServer({
-    name: "workflow-mcp",
-    version: "1.0.0",
-});
+export const stateless = true;
 
-server.tool(
-    "evaluate_task",
-    "Evaluate task complexity. Use for any task involving logic, algorithms, or multiple components. Skip only for trivial changes (styling, typos).",
-    {
-        is_multi_step: {
-            type: "boolean",
-            description: "Requires multiple implementation steps?",
-        },
-        has_unclear_requirements: {
-            type: "boolean",
-            description: "Requirements are vague or need clarification?",
-        },
-        can_break_into_subtasks: {
-            type: "boolean",
-            description: "Can be divided into independent subtasks?",
-        },
-        cannot_guarantee_bugfree: {
-            type: "boolean",
-            description: "High risk of edge cases or bugs?",
-        },
-    },
-    async ({
-        is_multi_step,
-        has_unclear_requirements,
-        can_break_into_subtasks,
-        cannot_guarantee_bugfree,
-    }: {
-        is_multi_step: boolean;
-        has_unclear_requirements: boolean;
-        can_break_into_subtasks: boolean;
-        cannot_guarantee_bugfree: boolean;
-    }) => {
-        const flags = [
-            is_multi_step,
-            has_unclear_requirements,
-            can_break_into_subtasks,
-            cannot_guarantee_bugfree,
-        ].filter(Boolean).length;
+export default function createStatelessServer() {
+    const server = new McpServer({
+        name: "workflow-mcp",
+        version: "1.0.0",
+    });
 
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify({
-                        complexity: flags,
-                        needs_memory_bank: flags >= 2,
-                        criteria: {
-                            is_multi_step,
-                            has_unclear_requirements,
-                            can_break_into_subtasks,
-                            cannot_guarantee_bugfree,
-                        },
-                    }),
-                },
-            ],
-        };
-    }
-);
+    server.tool(
+        "evaluate_task",
+        "Evaluate task complexity. Use for any task involving logic, algorithms, or multiple components. Skip only for trivial changes (styling, typos).",
+        {
+            is_multi_step: z.boolean().describe("Requires multiple implementation steps?"),
+            has_unclear_requirements: z.boolean().describe("Requirements are vague or need clarification?"),
+            can_break_into_subtasks: z.boolean().describe("Can be divided into independent subtasks?"),
+            cannot_guarantee_bugfree: z.boolean().describe("High risk of edge cases or bugs?"),
+        },
+        async ({ is_multi_step, has_unclear_requirements, can_break_into_subtasks, cannot_guarantee_bugfree }) => {
+            const flags = [
+                is_multi_step,
+                has_unclear_requirements,
+                can_break_into_subtasks,
+                cannot_guarantee_bugfree,
+            ].filter(Boolean).length;
 
-server.tool(
-    "verify_install_safety",
-    "Mandatory before package installation. Blocks unsafe operations.",
-    {
-        command: {
-            type: "string",
-            description: "Installation command to verify",
-        },
-        env_verified: {
-            type: "boolean",
-            description: "Has environment been checked?",
-        },
-    },
-    async ({ command, env_verified }: { command: string; env_verified: boolean }) => {
-        if (!env_verified) {
             return {
                 content: [
                     {
                         type: "text",
                         text: JSON.stringify({
-                            safe: false,
-                            reason: "Environment not verified",
+                            complexity: flags,
+                            needs_memory_bank: flags >= 2,
+                            criteria: {
+                                is_multi_step,
+                                has_unclear_requirements,
+                                can_break_into_subtasks,
+                                cannot_guarantee_bugfree,
+                            },
                         }),
                     },
                 ],
             };
         }
+    );
 
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify({ safe: true }),
-                },
-            ],
-        };
-    }
-);
-
-server.tool(
-    "think",
-    "Use for complex reasoning or caching thoughts. Logs process without external changes.",
-    {
-        thought: {
-            type: "string",
-            description: "The thought or reasoning process",
+    server.tool(
+        "env_verify",
+        "Mandatory before package installation. Blocks unsafe operations.",
+        {
+            command: z.string().describe("Installation command to verify"),
+            env_verified: z.boolean().describe("Has environment been checked?"),
         },
-    },
-    async ({ thought }: { thought: string }) => {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: thought,
-                },
-            ],
-        };
-    }
-);
+        async ({ command, env_verified }) => {
+            if (!env_verified) {
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({ safe: false, reason: "Environment not verified" }),
+                        },
+                    ],
+                };
+            }
 
-server.start();
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify({ safe: true }),
+                    },
+                ],
+            };
+        }
+    );
+
+    server.tool(
+        "think",
+        "Use for complex reasoning or caching thoughts. Logs process without external changes.",
+        {
+            thought: z.string().describe("The thought or reasoning process"),
+        },
+        async ({ thought }) => {
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: thought,
+                    },
+                ],
+            };
+        }
+    );
+
+    return server;
+}
+
