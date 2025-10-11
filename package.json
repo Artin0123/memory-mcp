@@ -1,0 +1,32 @@
+{
+  "name": "ai-workflow-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server with task evaluation and environment safety tools",
+  "main": "dist/server.js",
+  "type": "module",
+  "bin": {
+    "ai-workflow-mcp-server": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts"
+  },
+  "keywords": [
+    "mcp",
+    "workflow",
+    "assistant",
+    "evaluation",
+    "environment"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "@types/node": "^22.10.5"
+  }
+}

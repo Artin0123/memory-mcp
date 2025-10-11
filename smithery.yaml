@@ -1,0 +1,5 @@
+name: ai-workflow-mcp-server
+version: 1.0.0
+description: MCP server with task evaluation and environment safety tools
+runtime: node
+entry: dist/server.js
