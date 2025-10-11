@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // @ts-ignore - Smithery SDK types may not be fully available locally
-import { McpServer } from "@smithery/sdk/server";
+import { McpServer } from "@smithery/sdk/server/index.js";
 
 // Evaluation criteria (Flags ≥ 2 → Build memory-bank/):
 // - Multi step? (requires multiple implementation steps)
