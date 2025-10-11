@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "MCP server providing task evaluation, environment safety checks, and reasoning tools for AI assistants.",
   "main": "dist/server.js",
-  "module": "./src/server.ts",
+  "module": "./src/index.ts",
   "type": "module",
   "bin": {
     "ai-workflow-mcp-server": "./dist/server.js"
@@ -23,7 +23,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.0"
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "@smithery/sdk": "^1.6.8"
   },
   "devDependencies": {
     "tsx": "^4.20.6",
