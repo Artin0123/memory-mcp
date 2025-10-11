@@ -1,5 +1,7 @@
 # Workflow MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@Artin0123/workflow-mcp)](https://smithery.ai/server/@Artin0123/workflow-mcp)
+
 MCP server providing task evaluation, environment safety checks, and reasoning tools for AI assistants.
 
 ## Features
@@ -10,6 +12,15 @@ MCP server providing task evaluation, environment safety checks, and reasoning t
 
 ## Installation
 
+### Installing via Smithery
+
+To install Workflow Planner automatically via [Smithery](https://smithery.ai/server/@Artin0123/workflow-mcp):
+
+```bash
+npx -y @smithery/cli install @Artin0123/workflow-mcp
+```
+
+### Manual Installation
 ```bash
 npm install
 npm run build
