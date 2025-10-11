@@ -1,4 +1,4 @@
-# AI Workflow MCP Server
+# Workflow MCP Server
 
 MCP server providing task evaluation, environment safety checks, and reasoning tools for AI assistants.
 

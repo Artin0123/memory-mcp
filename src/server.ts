@@ -15,7 +15,7 @@ import {
 
 const server = new Server(
   {
-    name: "ai-workflow-mcp-server",
+    name: "workflow-mcp",
     version: "1.0.0",
   },
   {
