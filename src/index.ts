@@ -1,187 +1,162 @@
-#!/usr/bin/env node
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import * as fs from "fs";
 import * as path from "path";
-import { fileURLToPath } from "url";
-
-// Evaluation criteria (Flags ≥ 2 → Build memory-bank/):
-// - Multi step? (requires multiple implementation steps)
-// - Unclear requirements? (needs clarification/exploration)
-// - Can break into smaller sub-tasks? (independent components)
-// - Cannot guarantee bug-free completion? (high complexity/edge cases)
 
 const SERVER_VERSION = "1.0.0";
 
-export const configSchema = z.object({}).passthrough();
+interface MemoryEntry {
+    what: string;
+    why: string;
+    outcome: string;
+    task_context?: string;
+    constraints?: string;
+    dependencies?: string;
+}
 
-type CreateServerArgs = {
-    config?: unknown;
-    logger?: {
-        info?(...args: unknown[]): void;
-        error?(...args: unknown[]): void;
-        warn?(...args: unknown[]): void;
-        debug?(...args: unknown[]): void;
+interface Memory {
+    entries: MemoryEntry[];
+    meta: {
+        total_entries: number;
+        estimated_tokens: number;
+        last_updated: string;
     };
-};
+}
 
-// Tool schemas
-const EvaluateTaskSchema = z.object({
-    is_multi_step: z.boolean().describe("Requires multiple implementation steps?"),
-    has_unclear_requirements: z.boolean().describe("Requirements are vague or need clarification?"),
-    can_break_into_subtasks: z.boolean().describe("Can be divided into independent subtasks?"),
-    cannot_guarantee_bugfree: z.boolean().describe("High risk of edge cases or bugs?"),
-}).strict();
+// Token 估算函數
+function estimateTokens(entry: MemoryEntry): number {
+    const text = JSON.stringify(entry);
+    const chinese = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const english = (text.match(/[a-zA-Z]/g) || []).length;
+    const symbols = text.length - chinese - english;
 
-const EnvVerifySchema = z.object({
-    command: z.string().describe("Installation command to verify"),
-    env_verified: z.boolean().describe("Has environment been checked?"),
-}).strict();
+    return Math.ceil(chinese * 1.3 + english * 0.3 + symbols * 0.6);
+}
 
-const ThinkSchema = z.object({
-    thought: z.string().describe("The thought or reasoning process"),
-}).strict();
+// 讀取 JSON 檔案
+function readJSON(filePath: string): Memory | null {
+    try {
+        if (fs.existsSync(filePath)) {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            return JSON.parse(content);
+        }
+    } catch (error) {
+        console.error(`Error reading JSON file: ${error}`);
+    }
+    return null;
+}
 
-export function createWorkflowMcpServer({ config, logger }: CreateServerArgs = {}): McpServer {
+// 寫入 JSON 檔案
+function writeJSON(filePath: string, data: Memory): void {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function createMemoryMcpServer(options: { logger: Console }): McpServer {
     const server = new McpServer({
-        name: "workflow-mcp",
+        name: "memory-mcp",
         version: SERVER_VERSION,
-        description: "MCP server providing task evaluation, environment safety checks, and reasoning tools for AI assistants.",
     });
 
-    const log = logger ?? console;
-    log.info?.(`Workflow MCP server initialized (v${SERVER_VERSION})`);
-
-    server.registerTool(
-        "evaluate_task",
+    // 定義 mem_write 工具
+    server.tool(
+        "mem_write",
+        "Record workflow memories with FIFO eviction (keep ≤ 1000 tokens)",
         {
-            title: "Evaluate Task Complexity",
-            description: "Evaluate task complexity. Use for any task involving logic, algorithms, or multiple components. Skip only for trivial changes (styling, typos).",
-            inputSchema: EvaluateTaskSchema.shape,
+            projectPath: z.string().describe("Project path (provided by AI)"),
+            entries: z.array(z.object({
+                what: z.string().describe("What was done"),
+                why: z.string().describe("Why it was done"),
+                outcome: z.string().describe("What was the outcome"),
+                task_context: z.string().optional().describe("Task context"),
+                constraints: z.string().optional().describe("Constraints"),
+                dependencies: z.string().optional().describe("Dependencies")
+            })).describe("List of memory entries")
         },
-        async (rawArgs: unknown) => {
-            const { is_multi_step, has_unclear_requirements, can_break_into_subtasks, cannot_guarantee_bugfree } =
-                EvaluateTaskSchema.parse(rawArgs);
+        async ({ projectPath, entries }) => {
+            try {
+                // 1. 讀取現有 memory.json
+                const memoryPath = path.join(projectPath, '.memory', 'memory.json');
+                let memory: Memory = readJSON(memoryPath) || {
+                    entries: [],
+                    meta: {
+                        total_entries: 0,
+                        estimated_tokens: 0,
+                        last_updated: ""
+                    }
+                };
 
-            const flags = [
-                is_multi_step,
-                has_unclear_requirements,
-                can_break_into_subtasks,
-                cannot_guarantee_bugfree,
-            ].filter(Boolean).length;
+                // 2. 新增 entries
+                memory.entries.push(...entries);
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify({
-                            complexity: flags,
-                            needs_memory_bank: flags >= 2,
-                            criteria: {
-                                is_multi_step,
-                                has_unclear_requirements,
-                                can_break_into_subtasks,
-                                cannot_guarantee_bugfree,
-                            },
-                        }, null, 2),
-                    },
-                ],
-            };
-        }
-    );
+                // 3. 計算總 tokens
+                let totalTokens = memory.entries.reduce(
+                    (sum, e) => sum + estimateTokens(e),
+                    0
+                );
 
-    server.registerTool(
-        "env_verify",
-        {
-            title: "Verify Environment Safety",
-            description: "Mandatory before package installation. Blocks unsafe operations.",
-            inputSchema: EnvVerifySchema.shape,
-        },
-        async (rawArgs: unknown) => {
-            const { command, env_verified } = EnvVerifySchema.parse(rawArgs);
+                // 4. FIFO 刪除（保持 ≤ 1000 tokens）
+                while (totalTokens > 1000 && memory.entries.length > 1) {
+                    const removed = memory.entries.shift()!;
+                    totalTokens -= estimateTokens(removed);
+                }
 
-            if (!env_verified) {
+                // 5. 更新 meta
+                memory.meta = {
+                    total_entries: memory.entries.length,
+                    estimated_tokens: totalTokens,
+                    last_updated: new Date().toISOString().split('T')[0]
+                };
+
+                // 6. 寫回檔案
+                writeJSON(memoryPath, memory);
+
                 return {
-                    content: [
-                        {
-                            type: "text",
-                            text: JSON.stringify({ safe: false, reason: "Environment not verified" }, null, 2),
-                        },
-                    ],
+                    content: [{
+                        type: "text" as const,
+                        text: JSON.stringify({
+                            success: true,
+                            message: `Recorded ${entries.length} entries, current total ${memory.meta.total_entries} entries (approx. ${memory.meta.estimated_tokens} tokens)`
+                        }, null, 2)
+                    }]
+                };
+            } catch (error) {
+                return {
+                    content: [{
+                        type: "text" as const,
+                        text: JSON.stringify({
+                            success: false,
+                            message: `Write failed: ${error}`
+                        }, null, 2)
+                    }],
+                    isError: true
                 };
             }
-
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify({ safe: true }, null, 2),
-                    },
-                ],
-            };
-        }
-    );
-
-    server.registerTool(
-        "think",
-        {
-            title: "Reasoning Tool",
-            description: "Use for complex reasoning or caching thoughts. Logs process without external changes.",
-            inputSchema: ThinkSchema.shape,
-        },
-        async (rawArgs: unknown) => {
-            const { thought } = ThinkSchema.parse(rawArgs);
-
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: thought,
-                    },
-                ],
-            };
         }
     );
 
     return server;
 }
 
-export default function createServer(args: CreateServerArgs = {}) {
-    return createWorkflowMcpServer(args).server;
-}
-
-function isExecutedDirectly(): boolean {
-    const entryPoint = process.argv[1];
-    if (!entryPoint) {
-        return false;
-    }
-
-    try {
-        const resolvedEntry = path.resolve(entryPoint);
-        const currentModulePath = fileURLToPath(import.meta.url);
-        return resolvedEntry === currentModulePath;
-    } catch {
-        return false;
-    }
-}
-
 async function startCliServer(): Promise<void> {
     try {
-        const server = createWorkflowMcpServer({
+        const server = createMemoryMcpServer({
             logger: console,
         });
 
         const transport = new StdioServerTransport();
         await server.connect(transport);
 
-        console.error("Workflow MCP server started successfully");
+        console.error("Memory MCP server started successfully");
     } catch (error) {
-        console.error("Failed to start Workflow MCP server:", error);
+        console.error("Failed to start Memory MCP server:", error);
         process.exit(1);
     }
 }
 
-if (isExecutedDirectly()) {
-    void startCliServer();
-}
+// Start the server
+void startCliServer();

@@ -1,37 +1,26 @@
 {
-  "name": "workflow-mcp",
+  "name": "memory-mcp",
   "version": "1.0.0",
-  "description": "MCP server providing task evaluation, environment safety checks, and reasoning tools for AI assistants.",
+  "description": "MCP server providing task evaluation, memory bank management, failure protocol, and safety checks for AI assistants.",
   "main": "dist/index.js",
   "module": "./src/index.ts",
   "type": "module",
   "bin": {
-    "ai-workflow-mcp-server": "./dist/server.js"
+    "memory-mcp": "./dist/server.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx src/server.ts",
-    "smithery:build": "smithery build",
-    "smithery:dev": "smithery dev"
+    "start": "node dist/index.js"
   },
-  "keywords": [
-    "mcp",
-    "workflow",
-    "assistant",
-    "evaluation",
-    "environment"
-  ],
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.0",
-    "@smithery/sdk": "^1.6.8",
-    "zod": "^3.25.46"
+    "@modelcontextprotocol/sdk": "^1.20.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@smithery/cli": "^1.4.6",
-    "@types/node": "^24.7.1",
+    "@types/node": "^24.8.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
