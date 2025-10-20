@@ -1,6 +1,4 @@
 - Use existing tools or MCP when available instead of creating new solutions
-- Check if project has virtual environment (venv/.venv) - if exists, activate it first
-- Never hardcode API keys, tokens, or secrets - use environment variables
-- Check if localStorage/sessionStorage is supported in current environment before using
-- Check dependencies are installed (show pip install or npm install commands if missing)
-- Use cross-platform path handling (path.join) unless OS is explicitly specified
+- Activate venv/.venv before installing/running if it exists
+- Never hardcode secrets or API keys
+- Avoid admin/root privileges unless necessary
