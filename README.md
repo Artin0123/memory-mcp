@@ -1,6 +1,6 @@
 # Memory MCP
 
-This repository implements a small MCP server that exposes a `mem_write` tool for recording structured memory entries to a per-project JSON file (`.memory/memory.json`). The server is intentionally simple: it stores entries provided by the AI and enforces a token-budgeted FIFO eviction policy.
+This repository implements a small MCP server that exposes a `mem_save` tool for recording structured memory entries to a per-project JSON file (`.memory/memory.json`). The server is intentionally simple: it stores entries provided by the AI and enforces a token-budgeted FIFO eviction policy.
 
 ## Installation
 
@@ -26,13 +26,13 @@ Add this server to your MCP client configuration. Example:
 
 ## Features
 
-This server does not summarize or decide what to store by itself. User should decide when to call `mem_write`.
+This server does not summarize or decide what to store by itself. User should decide when to call `mem_save`.
 
-- Tool: `mem_write` — record memories for a project (JSON storage)
+- Tool: `mem_save` — record memories for a project (JSON storage)
 - Token estimation and FIFO eviction to keep estimated tokens ≤ 1000
 - Auto-creates `.memory/memory.json` if missing
 
-## mem_write behavior
+## mem_save behavior
 
 Inputs:
 - `projectPath` (string): absolute project path provided by the AI
