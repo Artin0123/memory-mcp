@@ -62,9 +62,9 @@ function createMemoryMcpServer(options: { logger: Console }): McpServer {
         version: SERVER_VERSION,
     });
 
-    // 定義 mem_write 工具
+    // 定義 mem_save 工具
     server.tool(
-        "mem_write",
+        "mem_save",
         "Record workflow memories with FIFO eviction (keep ≤ 1000 tokens)",
         {
             projectPath: z.string().describe("Project path (provided by AI)"),
