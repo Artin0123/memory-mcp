@@ -1,4 +1,5 @@
 - Use existing tools or MCP when available instead of creating new solutions
-- Activate venv/.venv before installing/running if it exists
-- Never hardcode secrets or API keys
-- Avoid admin/root privileges unless necessary
+- Activate venv/.venv before running the Python file if it exists
+- Use SQL commands instead of migrations or ORM tools
+- Include indexes and constraints unless clearly unnecessary
+- Keep all SQL identifiers in English
