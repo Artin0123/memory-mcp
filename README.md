@@ -2,6 +2,10 @@
 
 This repository implements a small MCP server that exposes a `mem_save` tool for recording structured memory entries to a per-project JSON file (`.memory/memory.json`). The server is intentionally simple: it stores entries provided by the AI and enforces a token-budgeted FIFO eviction policy.
 
+<a href="https://glama.ai/mcp/servers/@Artin0123/workflow-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Artin0123/workflow-mcp/badge" alt="Workflow Server MCP server" />
+</a>
+
 ## Installation
 
 ```powershell
